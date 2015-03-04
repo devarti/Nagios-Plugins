@@ -1,0 +1,74 @@
+!/bin/bash
+# Author: Devarshi Pathak - dpathak74@gmail.com - 12/26/2014 1:45PM
+# Description: For more details please visit http://www.nixkb.org
+# This Nagios plugin will check the state of an today mysql-zrm backup
+# set -x
+# You may not require to change anything below here
+
+# Nagios return codes
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+STATE_DEPENDENT=4
+LANG=C
+PROGNAME=$(basename $0)
+
+print_usage() {
+echo "Usage: $PROGNAME -b BackupSetName"
+echo ""
+}
+
+print_help() {
+print_usage
+echo ""
+echo "This plugin will check the state of an today mysql-zrm backup"
+echo ""
+exit 0
+}
+
+if [ $# -lt 1 ]; then
+print_usage
+exit $STATE_UNKNOWN
+fi
+
+exitstatus=$STATE_UNKNOWN #default
+
+while test -n "$1"; do
+case "$1" in
+--help)
+print_help
+exit $STATE_OK
+;;
+-h)
+print_help
+exit $STATE_OK
+;;
+-b)
+BackupSetName=$2
+shift
+;;
+
+esac
+shift
+done
+
+date=`date "+%a %b %d"`
+
+on_date=`mysql-zrm-reporter --where backup-set=dailyrun --show backup-status-info|grep "$date"|awk '{print $2,$3,$4,$5,$6}'`
+
+size=`/usr/bin/mysql-zrm-reporter --where backup-set=dailyrun --show backup-performance-info|grep "$date"|awk '{print $8,$9}'`
+
+test_query=`/usr/bin/mysql-zrm-reporter --where backup-set=$BackupSetName --show backup-status-info | grep "$date"|awk '{print $9}'`
+
+#verify the output
+
+if [ "$test_query" != "succeeded" ]
+
+then
+MESSAGE="MySQL ZRM backup $BackupSetName CRITICAL : $message"
+exitstatus=$STATE_CRITICAL
+else
+MESSAGE="MySQL ZRM backup $BackupSetName OK : $message"
+exitstatus=$STATE_OK
+fi
